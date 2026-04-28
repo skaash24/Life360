@@ -5,6 +5,7 @@ const DRIVE_FILE_ID = "1VulEOS6QRyHI7mX1axq-wGusvtMh9kdu";
 const CALENDAR_FILE_ID = "1HbqJsEOuMUTGxfKYXGSadHX6bdCpHbwk";
 const DRIVE_FOLDER_ID = "181Y0KKcLVPxkfi1Bk4RqzlzXbImrPfgb";
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 const TODAY = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD" in local timezone
 
@@ -50,19 +51,36 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 function b64(str) { return btoa(unescape(encodeURIComponent(str))); }
 function unb64(s) { try { return decodeURIComponent(escape(atob(s))); } catch { return s; } }
 
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+let _gToken = localStorage.getItem("gtoken");
+let _gTokenExpiry = Number(localStorage.getItem("gtokenExpiry") || 0);
+function getToken() {
+  if (_gToken && Date.now() < _gTokenExpiry) return _gToken;
+  return null;
+}
+function storeToken(token, expiresIn) {
+  _gToken = token;
+  _gTokenExpiry = Date.now() + (Number(expiresIn) - 60) * 1000;
+  localStorage.setItem("gtoken", _gToken);
+  localStorage.setItem("gtokenExpiry", String(_gTokenExpiry));
+}
+function clearToken() {
+  _gToken = null; _gTokenExpiry = 0;
+  localStorage.removeItem("gtoken");
+  localStorage.removeItem("gtokenExpiry");
+}
+
 async function callClaude(messages, systemPrompt = "") {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages,
-    }),
-  });
-  const data = await res.json();
-  return data.content?.find(b => b.type === "text")?.text || "";
+  try {
+    const res = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1000, system: systemPrompt, messages }),
+    });
+    if (!res.ok) return "";
+    const data = await res.json();
+    return data.content?.find(b => b.type === "text")?.text || "";
+  } catch { return ""; }
 }
 
 const CALENDAR = {
@@ -739,9 +757,11 @@ const CALENDAR = {
 function getEventsForDate(dateStr) { return CALENDAR[dateStr] || []; }
 
 async function loadCalendarFromDrive() {
+  const token = getToken();
+  if (!token) return null;
   try {
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${CALENDAR_FILE_ID}?alt=media`, {
-      headers: { Authorization: `Bearer ${window.__claudeToken || ""}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -749,11 +769,12 @@ async function loadCalendarFromDrive() {
   } catch { return null; }
 }
 
-
 async function loadJournal() {
+  const token = getToken();
+  if (!token) return { entries: [], version: 1 };
   try {
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${DRIVE_FILE_ID}?alt=media`, {
-      headers: { Authorization: `Bearer ${window.__claudeToken || ""}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return { entries: [], version: 1 };
     return await res.json();
@@ -761,15 +782,14 @@ async function loadJournal() {
 }
 
 async function saveJournal(journal) {
+  const token = getToken();
+  if (!token) { console.warn("Not authenticated"); return; }
   try {
     await fetch(
       `https://www.googleapis.com/upload/drive/v3/files/${DRIVE_FILE_ID}?uploadType=media`,
       {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${window.__claudeToken || ""}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(journal),
       }
     );
@@ -1017,6 +1037,29 @@ export default function Life360() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
+  const [authed, setAuthed] = useState(!!getToken());
+  const tokenClientRef = useRef(null);
+
+  useEffect(() => {
+    const init = () => {
+      if (!window.google || !GOOGLE_CLIENT_ID) return;
+      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: "https://www.googleapis.com/auth/drive.file",
+        callback: (resp) => {
+          if (resp.error) return;
+          storeToken(resp.access_token, resp.expires_in);
+          setAuthed(true);
+        },
+      });
+    };
+    if (window.google) init();
+    else window.addEventListener("load", init);
+    return () => window.removeEventListener("load", init);
+  }, []);
+
+  const signIn = () => tokenClientRef.current?.requestAccessToken();
+  const signOut = () => { clearToken(); setAuthed(false); };
 
   // Log state
   const [logDate, setLogDate] = useState(TODAY);
@@ -1164,6 +1207,20 @@ export default function Life360() {
   journal.entries.forEach(e => { if (e.category) catCounts[e.category] = (catCounts[e.category] || 0) + 1; });
   const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0];
 
+  if (!authed) return (
+    <div id="app">
+      <nav className="nav"><div className="nav-title">Life<span>360</span></div></nav>
+      <div className="section" style={{textAlign:"center",paddingTop:80}}>
+        <div style={{fontSize:56,marginBottom:16}}>📖</div>
+        <h2 style={{fontFamily:"var(--serif)",fontSize:28,marginBottom:8}}>Life360</h2>
+        <p style={{color:"var(--ink-2)",marginBottom:32}}>Sign in with Google to access your journal</p>
+        <button className="save-btn" onClick={signIn} style={{margin:"0 auto",display:"block",width:"auto",padding:"12px 32px"}}>
+          Sign in with Google
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div id="app">
       {/* NAV */}
@@ -1174,6 +1231,7 @@ export default function Life360() {
             <button key={id} className={`nav-tab${tab===id?" active":""}`} onClick={() => setTab(id)}>{label}</button>
           ))}
         </div>
+        <button onClick={signOut} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"var(--ink-3)",padding:"4px 8px"}}>Sign out</button>
       </nav>
 
       {/* ── LOG TAB ── */}
