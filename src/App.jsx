@@ -756,16 +756,44 @@ const CALENDAR = {
 
 function getEventsForDate(dateStr) { return CALENDAR[dateStr] || []; }
 
-async function loadCalendarFromDrive() {
+async function loadCalendarLive() {
   const token = getToken();
   if (!token) return null;
   try {
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${CALENDAR_FILE_ID}?alt=media`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.events || null;
+    const now = new Date();
+    const timeMin = new Date(now.getFullYear() - 2, 0, 1).toISOString();
+    const timeMax = new Date(now.getFullYear() + 2, 11, 31).toISOString();
+    const events = {};
+    let pageToken = null;
+    do {
+      const params = new URLSearchParams({
+        timeMin, timeMax,
+        singleEvents: "true",
+        orderBy: "startTime",
+        maxResults: "2500",
+        ...(pageToken && { pageToken }),
+      });
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      for (const ev of data.items || []) {
+        const dateStr = ev.start?.date || ev.start?.dateTime?.split("T")[0];
+        if (!dateStr) continue;
+        if (!events[dateStr]) events[dateStr] = [];
+        events[dateStr].push({
+          id: ev.id,
+          summary: ev.summary || "(No title)",
+          start: ev.start?.dateTime || "",
+          end: ev.end?.dateTime || "",
+          allDay: !!ev.start?.date,
+        });
+      }
+      pageToken = data.nextPageToken || null;
+    } while (pageToken);
+    return events;
   } catch { return null; }
 }
 
@@ -1045,7 +1073,7 @@ export default function Life360() {
       if (!window.google || !GOOGLE_CLIENT_ID) return;
       tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
-        scope: "https://www.googleapis.com/auth/drive",
+        scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly",
         callback: (resp) => {
           if (resp.error) return;
           storeToken(resp.access_token, resp.expires_in);
@@ -1095,9 +1123,9 @@ export default function Life360() {
   // Load journal and calendar on mount
   useEffect(() => {
     (async () => {
-      const [j, driveCalendar] = await Promise.all([loadJournal(), loadCalendarFromDrive()]);
+      const [j, liveCalendar] = await Promise.all([loadJournal(), loadCalendarLive()]);
       setJournal(j);
-      if (driveCalendar) setCalendarData(driveCalendar);
+      if (liveCalendar) setCalendarData(liveCalendar);
       setLoaded(true);
     })();
     const style = document.createElement("style");
