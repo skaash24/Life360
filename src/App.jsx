@@ -1061,7 +1061,7 @@ const css = `
 // ── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function Life360() {
   const [tab, setTab] = useState("log");
-  const [journal, setJournal] = useState({ entries: [], version: 1 });
+  const [journal, setJournal] = useState({ entries: [], reflections: [], version: 1 });
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
@@ -1240,6 +1240,20 @@ export default function Life360() {
       "You are a warm, thoughtful journaling companion who knows Kevin and his family well."
     );
     setReflection(text2);
+    if (text2 && !text2.startsWith("Error:")) {
+      const sinceLabel = since.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const nowLabel = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const saved = {
+        id: uid(),
+        period: reflectPeriod,
+        generatedAt: new Date().toISOString(),
+        dateRange: `${sinceLabel} – ${nowLabel}`,
+        text: text2,
+      };
+      const updated = { ...journal, reflections: [saved, ...(journal.reflections || [])] };
+      setJournal(updated);
+      await saveJournal(updated);
+    }
     setReflecting(false);
   };
 
@@ -1546,6 +1560,21 @@ export default function Life360() {
               <div className="empty-icon">✨</div>
               <div className="empty-msg">Your story is just beginning</div>
               <div className="empty-sub">Log some entries and come back for reflections</div>
+            </div>
+          )}
+
+          {(journal.reflections?.length > 0) && (
+            <div style={{marginTop:32}}>
+              <div className="section-header">Past Reflections</div>
+              {journal.reflections.map(r => (
+                <div key={r.id} className="reflect-card" style={{marginTop:12}}>
+                  <div className="reflect-title" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span>{r.period.charAt(0).toUpperCase()+r.period.slice(1)}ly Reflection</span>
+                    <span style={{fontSize:12,color:"var(--ink-3)",fontWeight:400}}>{r.dateRange}</span>
+                  </div>
+                  <div className="reflect-body">{r.text}</div>
+                </div>
+              ))}
             </div>
           )}
         </div>
