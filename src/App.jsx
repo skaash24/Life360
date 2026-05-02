@@ -1393,19 +1393,6 @@ export default function Life360() {
             <div style={{marginBottom:14,fontSize:12,color:"var(--ink-3)"}}>No calendar events this day</div>
           )}
 
-          {/* Intents */}
-          <div className="intents">
-            {INTENTS.map(i => (
-              <button
-                key={i.id}
-                className={`intent-btn${intent===i.id?" active":""}`}
-                onClick={() => setIntent(intent===i.id ? null : i.id)}
-              >
-                {i.icon}
-                <span className="intent-label">{i.label}</span>
-              </button>
-            ))}
-          </div>
 
           {/* Text area */}
           <textarea
