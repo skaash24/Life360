@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 const DRIVE_FILE_ID = "1HtPmI6DuH2t0w7w1vBf98uNVXTgsLoM7";
 const CALENDAR_FILE_ID = "1HbqJsEOuMUTGxfKYXGSadHX6bdCpHbwk";
 const DRIVE_FOLDER_ID = "181Y0KKcLVPxkfi1Bk4RqzlzXbImrPfgb";
-const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+const CLAUDE_MODEL = "claude-sonnet-4-6";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 function getToday() { return new Date().toLocaleDateString("en-CA"); }
