@@ -1114,6 +1114,7 @@ export default function Life360() {
   // Timeline state
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState({});
+  const [editingTags, setEditingTags] = useState(null);
 
   // Reflect state
   const [reflectPeriod, setReflectPeriod] = useState("week");
@@ -1191,6 +1192,13 @@ export default function Life360() {
     setStatus({ type: "ok", msg: "✓ Saved to your journal" });
     setText(""); setIntent(null); setLinkedEvents([]); setDetectedCat(null); setDetectedMood(null); setPhotos([]);
     setTimeout(() => setStatus(null), 3000);
+  };
+
+  const updateEntryTags = async (entryId, updates) => {
+    const updated = { ...journal, entries: journal.entries.map(e => e.id === entryId ? { ...e, ...updates } : e) };
+    setJournal(updated);
+    await saveJournal(updated);
+    setEditingTags(null);
   };
 
   const generateReflection = async () => {
@@ -1429,6 +1437,43 @@ export default function Life360() {
                   {entry.linkedEvents.map(ev=>(
                     <span key={ev.id} className="event-chip linked" style={{fontSize:12}}>🗓 {ev.summary}</span>
                   ))}
+                </div>
+              )}
+              <button
+                onClick={() => setEditingTags(editingTags === entry.id ? null : entry.id)}
+                style={{marginTop:10,background:"none",border:"1px solid var(--border)",borderRadius:8,padding:"4px 10px",fontSize:12,color:"var(--ink-2)",cursor:"pointer"}}
+              >
+                ✏️ Edit tags
+              </button>
+              {editingTags === entry.id && (
+                <div style={{marginTop:10,padding:12,background:"var(--card)",borderRadius:10,border:"1px solid var(--border)"}}>
+                  <div style={{fontSize:12,color:"var(--ink-2)",marginBottom:6}}>Category</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+                    {CATEGORIES.map(c => (
+                      <button key={c.id}
+                        onClick={() => updateEntryTags(entry.id, { category: entry.category === c.id ? null : c.id })}
+                        style={{padding:"4px 10px",borderRadius:20,border:"1px solid var(--border)",background:entry.category===c.id?"var(--terra)":"var(--surface)",color:entry.category===c.id?"#fff":"var(--ink-1)",fontSize:12,cursor:"pointer"}}
+                      >{c.icon} {c.label}</button>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12,color:"var(--ink-2)",marginBottom:6}}>Mood</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+                    {MOODS.map(m => (
+                      <button key={m.id}
+                        onClick={() => updateEntryTags(entry.id, { mood: entry.mood === m.id ? null : m.id })}
+                        style={{padding:"4px 10px",borderRadius:20,border:"1px solid var(--border)",background:entry.mood===m.id?"var(--terra)":"var(--surface)",color:entry.mood===m.id?"#fff":"var(--ink-1)",fontSize:12,cursor:"pointer"}}
+                      >{m.icon} {m.label}</button>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12,color:"var(--ink-2)",marginBottom:6}}>Intent</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {INTENTS.map(i => (
+                      <button key={i.id}
+                        onClick={() => updateEntryTags(entry.id, { intent: entry.intent === i.id ? null : i.id })}
+                        style={{padding:"4px 10px",borderRadius:20,border:"1px solid var(--border)",background:entry.intent===i.id?"var(--terra)":"var(--surface)",color:entry.intent===i.id?"#fff":"var(--ink-1)",fontSize:12,cursor:"pointer"}}
+                      >{i.icon} {i.label}</button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
