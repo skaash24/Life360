@@ -1206,9 +1206,16 @@ export default function Life360() {
     setReflection(null);
     const now = new Date(getToday());
     let since = new Date(now);
-    if (reflectPeriod === "week") since.setDate(now.getDate() - 7);
-    else if (reflectPeriod === "month") since.setMonth(now.getMonth() - 1);
-    else since.setFullYear(now.getFullYear() - 1);
+    if (reflectPeriod === "week") {
+      const day = now.getDay(); // 0=Sun, 1=Mon...
+      const diffToMon = (day === 0) ? -6 : 1 - day;
+      since = new Date(now);
+      since.setDate(now.getDate() + diffToMon);
+    } else if (reflectPeriod === "month") {
+      since = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+      since = new Date(now.getFullYear(), 0, 1);
+    }
 
     const relevantEntries = journal.entries.filter(e => new Date(e.date) >= since);
 
