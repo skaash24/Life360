@@ -1516,26 +1516,19 @@ export default function Life360() {
             </div>
           </div>
 
-          <div className="section-header">Ask Claude</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
-            {["How was this week?","Reflect on this month","What were Aiden's biggest moments?","How am I doing at work?","Highlight my best memories"].map(chip=>(
-              <button key={chip} onClick={()=>setReflectPrompt(chip)}
-                style={{fontSize:12,padding:"5px 12px",border:"1px solid var(--border)",borderRadius:20,background:"var(--card)",cursor:"pointer",color:"var(--ink-1)"}}>
-                {chip}
-              </button>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+          <div style={{position:"relative",marginBottom:8}}>
             <textarea
               value={reflectPrompt}
               onChange={e=>setReflectPrompt(e.target.value)}
               onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();generateReflection(reflectPrompt);} }}
-              placeholder={"Ask anything… \"How was this week?\" or \"Reflect on April\""}
-              rows={3}
-              style={{flex:1,resize:"vertical",padding:"10px 12px",border:"1px solid var(--border)",borderRadius:10,fontSize:14,fontFamily:"inherit",background:"var(--card)",color:"var(--ink-1)"}}
+              placeholder={"How was this week?\nWhat were Aiden's biggest moments?"}
+              rows={4}
+              style={{width:"100%",boxSizing:"border-box",resize:"vertical",padding:"12px 14px",border:"1px solid var(--border)",borderRadius:10,fontSize:14,fontFamily:"inherit",background:"var(--card)",color:"var(--ink-1)"}}
             />
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end"}}>
             <button className="save-btn" onClick={()=>generateReflection(reflectPrompt)} disabled={reflecting||!reflectPrompt.trim()}
-              style={{whiteSpace:"nowrap",alignSelf:"stretch"}}>
+              style={{minWidth:100}}>
               {reflecting ? <><span className="spin"/> Writing…</> : "✨ Send"}
             </button>
           </div>
