@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const DRIVE_FILE_ID = "1VulEOS6QRyHI7mX1axq-wGusvtMh9kdu";
+const DRIVE_FILE_ID = "1HtPmI6DuH2t0w7w1vBf98uNVXTgsLoM7";
 const CALENDAR_FILE_ID = "1HbqJsEOuMUTGxfKYXGSadHX6bdCpHbwk";
 const DRIVE_FOLDER_ID = "181Y0KKcLVPxkfi1Bk4RqzlzXbImrPfgb";
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
-const TODAY = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD" in local timezone
+function getToday() { return new Date().toLocaleDateString("en-CA"); }
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -1045,7 +1045,7 @@ export default function Life360() {
       if (!window.google || !GOOGLE_CLIENT_ID) return;
       tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
-        scope: "https://www.googleapis.com/auth/drive.file",
+        scope: "https://www.googleapis.com/auth/drive",
         callback: (resp) => {
           if (resp.error) return;
           storeToken(resp.access_token, resp.expires_in);
@@ -1062,7 +1062,7 @@ export default function Life360() {
   const signOut = () => { clearToken(); setAuthed(false); };
 
   // Log state
-  const [logDate, setLogDate] = useState(TODAY);
+  const [logDate, setLogDate] = useState(getToday());
   const [text, setText] = useState("");
   const [intent, setIntent] = useState(null);
   const [linkedEvents, setLinkedEvents] = useState([]);
@@ -1168,7 +1168,7 @@ export default function Life360() {
   const generateReflection = async () => {
     setReflecting(true);
     setReflection(null);
-    const now = new Date(TODAY);
+    const now = new Date(getToday());
     let since = new Date(now);
     if (reflectPeriod === "week") since.setDate(now.getDate() - 7);
     else if (reflectPeriod === "month") since.setMonth(now.getMonth() - 1);
@@ -1261,7 +1261,7 @@ export default function Life360() {
                     <div className="date-nav-side-num">{prev.getDate()}</div>
                   </div>
                   <div className="date-nav-center">
-                    <div className="date-nav-center-label">{logDate === TODAY ? "Today" : "Selected"}</div>
+                    <div className="date-nav-center-label">{logDate === getToday() ? "Today" : "Selected"}</div>
                     <div className="date-nav-center-day">{dayName(cur)}</div>
                     <div className="date-nav-center-num">{cur.getDate()}</div>
                     <div className="date-nav-center-month">{monthName(cur)}</div>
@@ -1279,7 +1279,7 @@ export default function Life360() {
           {/* Calendar events */}
           {calEvents.length > 0 && (
             <div style={{marginBottom:14}}>
-              <div className="events-title">{logDate === TODAY ? "Today's" : "Day's"} events — tap to link</div>
+              <div className="events-title">{logDate === getToday() ? "Today's" : "Day's"} events — tap to link</div>
               <div>
                 {calEvents.map(ev => (
                   <button
@@ -1295,7 +1295,7 @@ export default function Life360() {
               </div>
             </div>
           )}
-          {calEvents.length === 0 && logDate !== TODAY && (
+          {calEvents.length === 0 && logDate !== getToday() && (
             <div style={{marginBottom:14,fontSize:12,color:"var(--ink-3)"}}>No calendar events this day</div>
           )}
 
@@ -1426,7 +1426,7 @@ export default function Life360() {
               <div className="stat-label">{topCat ? `Most: ${CATEGORIES.find(c=>c.id===topCat[0])?.label}` : "No data yet"}</div>
             </div>
             <div className="stat-box">
-              <div className="stat-num">{journal.entries.filter(e=>e.date===TODAY).length}</div>
+              <div className="stat-num">{journal.entries.filter(e=>e.date===getToday()).length}</div>
               <div className="stat-label">Today's Entries</div>
             </div>
           </div>
