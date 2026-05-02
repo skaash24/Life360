@@ -1210,15 +1210,33 @@ export default function Life360() {
     else if (reflectPeriod === "month") since.setMonth(now.getMonth() - 1);
     else since.setFullYear(now.getFullYear() - 1);
 
-    const relevant = journal.entries.filter(e => new Date(e.date) >= since);
-    if (relevant.length === 0) {
-      setReflection("No entries yet for this period. Start journaling to get reflections!");
+    const relevantEntries = journal.entries.filter(e => new Date(e.date) >= since);
+
+    // Gather calendar events for the same period
+    const calendarLines = [];
+    for (const [dateStr, evts] of Object.entries(calendarData)) {
+      const d = new Date(dateStr);
+      if (d >= since && d <= now) {
+        evts.forEach(ev => calendarLines.push(`[${dateStr}] 📅 ${ev.summary}${ev.allDay ? " (all day)" : ""}`));
+      }
+    }
+
+    if (relevantEntries.length === 0 && calendarLines.length === 0) {
+      setReflection("No entries or calendar events yet for this period. Start journaling to get reflections!");
       setReflecting(false);
       return;
     }
-    const summary = relevant.map(e => `[${e.date}] ${e.intent ? `(${e.intent}) ` : ""}${e.text}`).join("\n\n");
+
+    const journalSection = relevantEntries.length > 0
+      ? `JOURNAL ENTRIES:\n${relevantEntries.map(e => `[${e.date}]${e.intent ? ` (${e.intent})` : ""}${e.category ? ` [${e.category}]` : ""} ${e.text}`).join("\n\n")}`
+      : "JOURNAL ENTRIES: None this period.";
+
+    const calendarSection = calendarLines.length > 0
+      ? `CALENDAR EVENTS:\n${calendarLines.join("\n")}`
+      : "CALENDAR EVENTS: None this period.";
+
     const text2 = await callClaude(
-      [{ role: "user", content: `Here are Kevin's journal entries for the past ${reflectPeriod}:\n\n${summary}\n\nWrite a warm, personal ${reflectPeriod}ly reflection for Kevin (48, works at AWS, married to Sharon, kids Aiden and a daughter). Highlight themes, memorable moments, and a gentle insight or encouragement. 3-4 paragraphs, conversational tone.` }],
+      [{ role: "user", content: `Here is Kevin's ${reflectPeriod} in review:\n\n${journalSection}\n\n${calendarSection}\n\nWrite a warm, personal ${reflectPeriod}ly reflection for Kevin (48, works at AWS, married to Sharon, kids Aiden and a daughter). Weave together both his journal moments and calendar events to paint a picture of his ${reflectPeriod}. Highlight themes, memorable moments, and a gentle insight or encouragement. 3-4 paragraphs, conversational tone.` }],
       "You are a warm, thoughtful journaling companion who knows Kevin and his family well."
     );
     setReflection(text2);
