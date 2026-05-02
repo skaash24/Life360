@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const DRIVE_FILE_ID = "1HtPmI6DuH2t0w7w1vBf98uNVXTgsLoM7";
+const DRIVE_FILE_ID = "18Q9Z5OPQcoMO01gc-p8Wyg2OvcD5Ss4w";
 const CALENDAR_FILE_ID = "1HbqJsEOuMUTGxfKYXGSadHX6bdCpHbwk";
 const DRIVE_FOLDER_ID = "181Y0KKcLVPxkfi1Bk4RqzlzXbImrPfgb";
 const CLAUDE_MODEL = "claude-sonnet-4-6";
