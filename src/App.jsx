@@ -1117,8 +1117,7 @@ export default function Life360() {
   const [editingTags, setEditingTags] = useState(null);
 
   // Reflect state
-  const [reflectPeriod, setReflectPeriod] = useState("week");
-  const [reflectAnchor, setReflectAnchor] = useState(getToday());
+  const [reflectPrompt, setReflectPrompt] = useState("");
   const [reflection, setReflection] = useState(null);
   const [reflecting, setReflecting] = useState(false);
 
@@ -1202,69 +1201,33 @@ export default function Life360() {
     setEditingTags(null);
   };
 
-  const generateReflection = async () => {
+  const generateReflection = async (prompt) => {
+    if (!prompt.trim()) return;
     setReflecting(true);
     setReflection(null);
-    const anchor = new Date(reflectAnchor);
-    const today = new Date(getToday());
-    let since, until;
-    if (reflectPeriod === "week") {
-      const day = anchor.getDay();
-      const diffToMon = (day === 0) ? -6 : 1 - day;
-      since = new Date(anchor);
-      since.setDate(anchor.getDate() + diffToMon);
-      until = new Date(since);
-      until.setDate(since.getDate() + 6);
-      if (until > today) until = today;
-    } else if (reflectPeriod === "month") {
-      since = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-      until = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
-      if (until > today) until = today;
-    } else {
-      since = new Date(anchor.getFullYear(), 0, 1);
-      until = new Date(anchor.getFullYear(), 11, 31);
-      if (until > today) until = today;
-    }
-    const now = until;
 
-    const relevantEntries = journal.entries.filter(e => new Date(e.date) >= since && new Date(e.date) <= now);
+    const journalSection = journal.entries.length > 0
+      ? `JOURNAL ENTRIES:\n${journal.entries.map(e => `[${e.date}]${e.intent ? ` (${e.intent})` : ""}${e.category ? ` [${e.category}]` : ""} ${e.text}`).join("\n\n")}`
+      : "JOURNAL ENTRIES: None yet.";
 
-    // Gather calendar events for the same period
     const calendarLines = [];
     for (const [dateStr, evts] of Object.entries(calendarData)) {
-      const d = new Date(dateStr);
-      if (d >= since && d <= now) {
-        evts.forEach(ev => calendarLines.push(`[${dateStr}] 📅 ${ev.summary}${ev.allDay ? " (all day)" : ""}`));
-      }
+      evts.forEach(ev => calendarLines.push(`[${dateStr}] ${ev.summary}${ev.allDay ? " (all day)" : ""}`));
     }
-
-    if (relevantEntries.length === 0 && calendarLines.length === 0) {
-      setReflection("No entries or calendar events yet for this period. Start journaling to get reflections!");
-      setReflecting(false);
-      return;
-    }
-
-    const journalSection = relevantEntries.length > 0
-      ? `JOURNAL ENTRIES:\n${relevantEntries.map(e => `[${e.date}]${e.intent ? ` (${e.intent})` : ""}${e.category ? ` [${e.category}]` : ""} ${e.text}`).join("\n\n")}`
-      : "JOURNAL ENTRIES: None this period.";
-
     const calendarSection = calendarLines.length > 0
-      ? `CALENDAR EVENTS:\n${calendarLines.join("\n")}`
-      : "CALENDAR EVENTS: None this period.";
+      ? `CALENDAR EVENTS:\n${calendarLines.sort().join("\n")}`
+      : "CALENDAR EVENTS: None.";
 
     const text2 = await callClaude(
-      [{ role: "user", content: `Here is Kevin's ${reflectPeriod} in review:\n\n${journalSection}\n\n${calendarSection}\n\nWrite a warm, personal ${reflectPeriod}ly reflection for Kevin (48, works at AWS, married to Sharon, kids Aiden and a daughter). Weave together both his journal moments and calendar events to paint a picture of his ${reflectPeriod}. Highlight themes, memorable moments, and a gentle insight or encouragement. 3-4 paragraphs, conversational tone.` }],
-      "You are a warm, thoughtful journaling companion who knows Kevin and his family well."
+      [{ role: "user", content: `Today's date is ${getToday()}.\n\n${journalSection}\n\n${calendarSection}\n\nKevin's request: "${prompt}"\n\nRespond conversationally and warmly, using the journal entries and calendar events above as context. If Kevin asks about a specific period, focus on that. If he asks about a person or theme, find relevant moments across all entries.` }],
+      "You are a warm, thoughtful journaling companion for Kevin (48, works at AWS, married to Sharon, kids Aiden age 7 and a daughter). You know his life well through his journal and calendar. Be personal, insightful, and encouraging."
     );
     setReflection(text2);
     if (text2 && !text2.startsWith("Error:")) {
-      const sinceLabel = since.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      const nowLabel = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
       const saved = {
         id: uid(),
-        period: reflectPeriod,
+        prompt,
         generatedAt: new Date().toISOString(),
-        dateRange: `${sinceLabel} – ${nowLabel}`,
         text: text2,
       };
       const updated = { ...journal, reflections: [saved, ...(journal.reflections || [])] };
@@ -1553,50 +1516,33 @@ export default function Life360() {
             </div>
           </div>
 
-          <div className="section-header">Generate Reflection</div>
-          <div style={{display:"flex",gap:8,marginBottom:12}}>
-            {["week","month","year"].map(p=>(
-              <button key={p} className={`reflect-btn${reflectPeriod===p?"":" outline"}`} onClick={()=>{ setReflectPeriod(p); setReflectAnchor(getToday()); }}>
-                {p.charAt(0).toUpperCase()+p.slice(1)}
+          <div className="section-header">Ask Claude</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
+            {["How was this week?","Reflect on this month","What were Aiden's biggest moments?","How am I doing at work?","Highlight my best memories"].map(chip=>(
+              <button key={chip} onClick={()=>setReflectPrompt(chip)}
+                style={{fontSize:12,padding:"5px 12px",border:"1px solid var(--border)",borderRadius:20,background:"var(--card)",cursor:"pointer",color:"var(--ink-1)"}}>
+                {chip}
               </button>
             ))}
           </div>
-          <div style={{marginBottom:16}}>
-            {reflectPeriod === "week" && (
-              <div style={{fontSize:12,color:"var(--ink-2)"}}>
-                Pick any date in the week:&nbsp;
-                <input type="date" value={reflectAnchor} max={getToday()} onChange={e => setReflectAnchor(e.target.value)}
-                  style={{border:"1px solid var(--border)",borderRadius:6,padding:"3px 6px",fontSize:12}} />
-              </div>
-            )}
-            {reflectPeriod === "month" && (
-              <div style={{fontSize:12,color:"var(--ink-2)"}}>
-                Pick a month:&nbsp;
-                <input type="month" value={reflectAnchor.slice(0,7)} max={getToday().slice(0,7)}
-                  onChange={e => setReflectAnchor(e.target.value + "-01")}
-                  style={{border:"1px solid var(--border)",borderRadius:6,padding:"3px 6px",fontSize:12}} />
-              </div>
-            )}
-            {reflectPeriod === "year" && (
-              <div style={{fontSize:12,color:"var(--ink-2)"}}>
-                Pick a year:&nbsp;
-                <select value={new Date(reflectAnchor).getFullYear()}
-                  onChange={e => setReflectAnchor(`${e.target.value}-01-01`)}
-                  style={{border:"1px solid var(--border)",borderRadius:6,padding:"3px 6px",fontSize:12}}>
-                  {Array.from({length: new Date().getFullYear() - 2023}, (_,i) => new Date().getFullYear() - i).map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+          <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+            <textarea
+              value={reflectPrompt}
+              onChange={e=>setReflectPrompt(e.target.value)}
+              onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();generateReflection(reflectPrompt);} }}
+              placeholder="Ask anything… "How was this week?" or "Reflect on April""
+              rows={3}
+              style={{flex:1,resize:"vertical",padding:"10px 12px",border:"1px solid var(--border)",borderRadius:10,fontSize:14,fontFamily:"inherit",background:"var(--card)",color:"var(--ink-1)"}}
+            />
+            <button className="save-btn" onClick={()=>generateReflection(reflectPrompt)} disabled={reflecting||!reflectPrompt.trim()}
+              style={{whiteSpace:"nowrap",alignSelf:"stretch"}}>
+              {reflecting ? <><span className="spin"/> Writing…</> : "✨ Send"}
+            </button>
           </div>
-          <button className="save-btn" onClick={generateReflection} disabled={reflecting}>
-            {reflecting ? <><span className="spin"/> Writing reflection…</> : `✨ Reflect on my ${reflectPeriod}`}
-          </button>
 
           {reflection && (
             <div className="reflect-card" style={{marginTop:16, background: reflection.startsWith("Error:") ? "#fff0f0" : undefined}}>
-              <div className="reflect-title">{reflection.startsWith("Error:") ? "⚠️ Something went wrong" : `Your ${reflectPeriod.charAt(0).toUpperCase()+reflectPeriod.slice(1)} in Review`}</div>
+              <div className="reflect-title">{reflection.startsWith("Error:") ? "⚠️ Something went wrong" : "✨ Reflection"}</div>
               <div className="reflect-body">{reflection}</div>
             </div>
           )}
@@ -1615,8 +1561,10 @@ export default function Life360() {
               {journal.reflections.map(r => (
                 <div key={r.id} className="reflect-card" style={{marginTop:12}}>
                   <div className="reflect-title" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span>{r.period.charAt(0).toUpperCase()+r.period.slice(1)}ly Reflection</span>
-                    <span style={{fontSize:12,color:"var(--ink-3)",fontWeight:400}}>{r.dateRange}</span>
+                    <span>✨ {r.prompt || "Reflection"}</span>
+                    <span style={{fontSize:12,color:"var(--ink-3)",fontWeight:400}}>
+                      {r.generatedAt ? new Date(r.generatedAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : ""}
+                    </span>
                   </div>
                   <div className="reflect-body">{r.text}</div>
                 </div>
