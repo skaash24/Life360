@@ -1118,6 +1118,7 @@ export default function Life360() {
 
   // Reflect state
   const [reflectPeriod, setReflectPeriod] = useState("week");
+  const [reflectAnchor, setReflectAnchor] = useState(getToday());
   const [reflection, setReflection] = useState(null);
   const [reflecting, setReflecting] = useState(false);
 
@@ -1204,20 +1205,29 @@ export default function Life360() {
   const generateReflection = async () => {
     setReflecting(true);
     setReflection(null);
-    const now = new Date(getToday());
-    let since = new Date(now);
+    const anchor = new Date(reflectAnchor);
+    const today = new Date(getToday());
+    let since, until;
     if (reflectPeriod === "week") {
-      const day = now.getDay(); // 0=Sun, 1=Mon...
+      const day = anchor.getDay();
       const diffToMon = (day === 0) ? -6 : 1 - day;
-      since = new Date(now);
-      since.setDate(now.getDate() + diffToMon);
+      since = new Date(anchor);
+      since.setDate(anchor.getDate() + diffToMon);
+      until = new Date(since);
+      until.setDate(since.getDate() + 6);
+      if (until > today) until = today;
     } else if (reflectPeriod === "month") {
-      since = new Date(now.getFullYear(), now.getMonth(), 1);
+      since = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+      until = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+      if (until > today) until = today;
     } else {
-      since = new Date(now.getFullYear(), 0, 1);
+      since = new Date(anchor.getFullYear(), 0, 1);
+      until = new Date(anchor.getFullYear(), 11, 31);
+      if (until > today) until = today;
     }
+    const now = until;
 
-    const relevantEntries = journal.entries.filter(e => new Date(e.date) >= since);
+    const relevantEntries = journal.entries.filter(e => new Date(e.date) >= since && new Date(e.date) <= now);
 
     // Gather calendar events for the same period
     const calendarLines = [];
@@ -1544,12 +1554,41 @@ export default function Life360() {
           </div>
 
           <div className="section-header">Generate Reflection</div>
-          <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
             {["week","month","year"].map(p=>(
-              <button key={p} className={`reflect-btn${reflectPeriod===p?"":" outline"}`} onClick={()=>setReflectPeriod(p)}>
+              <button key={p} className={`reflect-btn${reflectPeriod===p?"":" outline"}`} onClick={()=>{ setReflectPeriod(p); setReflectAnchor(getToday()); }}>
                 {p.charAt(0).toUpperCase()+p.slice(1)}
               </button>
             ))}
+          </div>
+          <div style={{marginBottom:16}}>
+            {reflectPeriod === "week" && (
+              <div style={{fontSize:12,color:"var(--ink-2)"}}>
+                Pick any date in the week:&nbsp;
+                <input type="date" value={reflectAnchor} max={getToday()} onChange={e => setReflectAnchor(e.target.value)}
+                  style={{border:"1px solid var(--border)",borderRadius:6,padding:"3px 6px",fontSize:12}} />
+              </div>
+            )}
+            {reflectPeriod === "month" && (
+              <div style={{fontSize:12,color:"var(--ink-2)"}}>
+                Pick a month:&nbsp;
+                <input type="month" value={reflectAnchor.slice(0,7)} max={getToday().slice(0,7)}
+                  onChange={e => setReflectAnchor(e.target.value + "-01")}
+                  style={{border:"1px solid var(--border)",borderRadius:6,padding:"3px 6px",fontSize:12}} />
+              </div>
+            )}
+            {reflectPeriod === "year" && (
+              <div style={{fontSize:12,color:"var(--ink-2)"}}>
+                Pick a year:&nbsp;
+                <select value={new Date(reflectAnchor).getFullYear()}
+                  onChange={e => setReflectAnchor(`${e.target.value}-01-01`)}
+                  style={{border:"1px solid var(--border)",borderRadius:6,padding:"3px 6px",fontSize:12}}>
+                  {Array.from({length: new Date().getFullYear() - 2023}, (_,i) => new Date().getFullYear() - i).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <button className="save-btn" onClick={generateReflection} disabled={reflecting}>
             {reflecting ? <><span className="spin"/> Writing reflection…</> : `✨ Reflect on my ${reflectPeriod}`}
