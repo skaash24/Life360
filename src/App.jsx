@@ -1391,6 +1391,7 @@ export default function Life360() {
   const moodIcon = (id) => MOODS.find(m => m.id === id)?.icon || "";
 
   const filteredEntries = journal.entries.filter(e => {
+    if (!e.text?.trim()) return false;
     if (filter === "all") return true;
     if (filter === "milestones") return e.intent === "milestone";
     if (filter === "stories") return e.intent === "story";
