@@ -102,3 +102,10 @@ data/journal.json    — empty template (real data lives on Drive)
 - Removed manual intent buttons from Log tab (AI auto-tagging handles it)
 - Fixed stale date in PWA: log date resets to today on visibility change
 - Silent token refresh: expired token refreshes in background; journal + calendar reload automatically
+- Added manual mood picker to Log tab (Great/Good/Okay/Hard/Tough, scores 5–1)
+- Mood scoring: MOOD_SCORE = { great:5, good:4, okay:3, hard:2, tough:1 }; removed funny/proud/grateful
+- `moodSource: "manual" | "ai" | null` saved per entry to distinguish origin
+- Mood-only entries (no text) allowed; excluded from total entries count and Timeline
+- Two-line mood chart in Reflect: solid terracotta circles = manual, dashed grey squares = AI-inferred
+- Legacy entries (saved before moodSource field) treated as AI-sourced in chart
+- Stats tab: per-category count pills instead of single "top category" box
