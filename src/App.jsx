@@ -1291,7 +1291,7 @@ export default function Life360() {
   };
 
   const saveEntry = async () => {
-    if (!text.trim()) { setStatus({ type: "err", msg: "Write something first!" }); return; }
+    if (!text.trim() && !selectedMood) { setStatus({ type: "err", msg: "Write something or select a mood first!" }); return; }
     setSaving(true);
     setStatus(null);
     const entry = {
