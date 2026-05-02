@@ -1605,14 +1605,11 @@ export default function Life360() {
             <div style={{marginTop:32}}>
               <div className="section-header">Past Reflections</div>
               {journal.reflections.map(r => (
-                <div key={r.id} className="reflect-card" style={{marginTop:12}}>
-                  <div className="reflect-title" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span>✨ {r.prompt || "Reflection"}</span>
-                    <span style={{fontSize:12,color:"var(--ink-3)",fontWeight:400}}>
-                      {r.generatedAt ? new Date(r.generatedAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : ""}
-                    </span>
-                  </div>
-                  <div className="reflect-body">{r.text}</div>
+                <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 4px",borderBottom:"1px solid var(--border)"}}>
+                  <span style={{fontSize:14,color:"var(--ink-1)"}}>✨ {r.prompt || "Reflection"}</span>
+                  <span style={{fontSize:12,color:"var(--ink-3)",whiteSpace:"nowrap",marginLeft:12}}>
+                    {r.generatedAt ? new Date(r.generatedAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : ""}
+                  </span>
                 </div>
               ))}
             </div>
