@@ -1061,7 +1061,7 @@ function MoodChart({ entries }) {
   const toPoints = (source) => {
     const byDay = {};
     entries
-      .filter(e => MOOD_SCORE[e.mood] && e.moodSource === source)
+      .filter(e => MOOD_SCORE[e.mood] && (e.moodSource === source || (source === "ai" && !e.moodSource)))
       .forEach(e => {
         if (!byDay[e.date]) byDay[e.date] = [];
         byDay[e.date].push(MOOD_SCORE[e.mood]);
