@@ -59,9 +59,8 @@ data/journal.json    — empty template (real data lives on Drive)
 
 ## Features Built
 ### Log Tab
-- Text entry with date picker (defaults to today)
+- Text entry with date picker (defaults to today, resets when app regains focus)
 - AI auto-tagging: category + mood detected from text via Claude after 20+ chars
-- Manual intent buttons: Milestone / Story / Funny / Grateful
 - Link calendar events from the selected day
 - Attach photos — uploaded to Drive folder (stored as file IDs, not base64)
 
@@ -72,9 +71,8 @@ data/journal.json    — empty template (real data lives on Drive)
 
 ### Reflect Tab
 - Conversational textarea — type any natural language prompt
-- Two placeholder suggestions shown in grey, disappear on typing
-- Send button (or Enter) — passes ALL journal entries + ALL calendar events to Claude
-- Claude responds as a warm journaling companion with full context
+- Two grey placeholder suggestions disappear on typing; Enter or Send button submits
+- Passes ALL journal entries + ALL calendar events to Claude as context
 - Responses saved to Drive with timestamp; shown in Past Reflections
 
 ### Stats Tab
@@ -85,17 +83,22 @@ data/journal.json    — empty template (real data lives on Drive)
 - Falls back to static CALENDAR constant if API unavailable
 - Events grouped by date and available to Log (link) + Reflect (context)
 
+## Auth Behavior
+- Token lasts 1 hour; on expiry app silently refreshes via `requestAccessToken({ prompt: "" })`
+- Silent refresh triggered on app init (if previously signed in) and on visibility change
+- After refresh, journal + calendar data automatically reloaded — no user action needed
+- First-time sign-in still requires the Sign in with Google button
+
 ## Known Issues / TODOs
-- Photos uploaded before this session were stored as base64 in journal.json (still display correctly via backward-compat in `DrivePhoto` component)
 - App shows "Life360 has not completed Google verification" warning — user must click through as test user (added via myaccount.google.com/permissions)
 - No delete entry feature yet
 - No search/filter by text yet
 - Vercel env vars (ANTHROPIC_API_KEY, VITE_GOOGLE_CLIENT_ID) must be set manually in Vercel dashboard
 
 ## Last Session — 2026-05-02
-- Fixed Reflect tab: replaced period picker (week/month/year buttons + date inputs) with conversational chat-style textarea
-- Suggestion chips removed; two grey placeholder prompts shown inline in textarea
-- `generateReflection` now accepts any natural language prompt and sends full journal + calendar context to Claude
-- Fixed build error: curly quotes in JSX placeholder
-- Photos now upload to Google Drive folder (file ID stored in journal) instead of being base64-embedded in journal.json — keeps journal.json small
-- Added `DrivePhoto` component: fetches images from Drive with auth token, backward-compatible with old base64 entries
+- Reflect tab: replaced period picker with conversational chat textarea + inline placeholder suggestions
+- Photos: upload to Drive folder as file IDs (not base64); `DrivePhoto` component fetches with auth token
+- Merged duplicate journal.json files on Drive into one clean file (new ID in table above)
+- Removed manual intent buttons from Log tab (AI auto-tagging handles it)
+- Fixed stale date in PWA: log date resets to today on visibility change
+- Silent token refresh: expired token refreshes in background; journal + calendar reload automatically
