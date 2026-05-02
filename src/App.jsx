@@ -1167,7 +1167,9 @@ export default function Life360() {
     const style = document.createElement("style");
     style.textContent = css;
     document.head.appendChild(style);
-    return () => document.head.removeChild(style);
+    const onVisible = () => { if (document.visibilityState === "visible") setLogDate(getToday()); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { document.head.removeChild(style); document.removeEventListener("visibilitychange", onVisible); };
   }, []);
 
   // AI auto-tag on text change
