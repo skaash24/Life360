@@ -13,7 +13,7 @@ https://life360-gilt.vercel.app
 | Item | Value |
 |---|---|
 | Google OAuth Client ID | `763965669121-h8okpib7hul30gv554g5f7m6vdke0289.apps.googleusercontent.com` |
-| journal.json Drive ID | `18Q9Z5OPQcoMO01gc-p8Wyg2OvcD5Ss4w` |
+| journal.json Drive ID | `11jolfST_2iQu_CYM66ChWrGg4F_LoS7N` |
 | Photos Drive folder ID | `181Y0KKcLVPxkfi1Bk4RqzlzXbImrPfgb` |
 | Claude model | `claude-sonnet-4-6` |
 | Google account | `kshin780@gmail.com` |
