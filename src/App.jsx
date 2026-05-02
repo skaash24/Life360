@@ -1058,6 +1058,40 @@ const css = `
   }
 `;
 
+// ── PHOTO HELPERS ────────────────────────────────────────────────────────────
+async function uploadPhotoToDrive(file, token) {
+  const metadata = { name: `photo_${Date.now()}_${file.name}`, parents: [DRIVE_FOLDER_ID] };
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", file);
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+    { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form }
+  );
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || "Upload failed"); }
+  const data = await res.json();
+  return data.id;
+}
+
+function DrivePhoto({ src, className }) {
+  const [url, setUrl] = useState(src?.startsWith("data:") ? src : null);
+  useEffect(() => {
+    if (!src || src.startsWith("data:")) return;
+    const token = getToken();
+    if (!token) return;
+    let objectUrl;
+    fetch(`https://www.googleapis.com/drive/v3/files/${src}?alt=media`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.blob())
+      .then(blob => { objectUrl = URL.createObjectURL(blob); setUrl(objectUrl); })
+      .catch(() => {});
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [src]);
+  if (!url) return <div className={className} style={{ background: "var(--border)", borderRadius: 8 }} />;
+  return <img src={url} className={className} alt="" />;
+}
+
 // ── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function Life360() {
   const [tab, setTab] = useState("log");
@@ -1097,6 +1131,7 @@ export default function Life360() {
   const [detectedCat, setDetectedCat] = useState(null);
   const [detectedMood, setDetectedMood] = useState(null);
   const [photos, setPhotos] = useState([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [aiRunning, setAiRunning] = useState(false);
   const [calEvents, setCalEvents] = useState([]);
   const [calLoading, setCalLoading] = useState(false);
@@ -1161,13 +1196,22 @@ export default function Life360() {
     );
   };
 
-  const addPhoto = (e) => {
+  const addPhoto = async (e) => {
+    const token = getToken();
+    if (!token) { setStatus({ type: "err", msg: "Sign in first" }); return; }
     const files = Array.from(e.target.files);
-    files.forEach(f => {
-      const r = new FileReader();
-      r.onload = ev => setPhotos(p => [...p, ev.target.result]);
-      r.readAsDataURL(f);
-    });
+    setPhotoUploading(true);
+    try {
+      for (const f of files) {
+        const id = await uploadPhotoToDrive(f, token);
+        setPhotos(p => [...p, id]);
+      }
+    } catch (err) {
+      setStatus({ type: "err", msg: `Photo upload failed: ${err.message}` });
+    } finally {
+      setPhotoUploading(false);
+      e.target.value = "";
+    }
   };
 
   const saveEntry = async () => {
@@ -1389,8 +1433,10 @@ export default function Life360() {
 
           {/* Photos */}
           <div className="photo-row">
-            {photos.map((src, i) => <img key={i} src={src} className="photo-thumb" alt="" />)}
-            <div className="photo-add" onClick={() => fileRef.current?.click()}>📷</div>
+            {photos.map((src, i) => <DrivePhoto key={i} src={src} className="photo-thumb" />)}
+            <div className="photo-add" onClick={() => !photoUploading && fileRef.current?.click()}>
+              {photoUploading ? <span className="spin" /> : "📷"}
+            </div>
             <input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={addPhoto} />
           </div>
 
@@ -1441,7 +1487,7 @@ export default function Life360() {
               )}
               {entry.photos?.length > 0 && (
                 <div className="photo-row" style={{marginTop:8}}>
-                  {entry.photos.map((src,i)=><img key={i} src={src} className="photo-thumb" alt=""/>)}
+                  {entry.photos.map((src,i)=><DrivePhoto key={i} src={src} className="photo-thumb" />)}
                 </div>
               )}
               {entry.linkedEvents?.length > 0 && (
