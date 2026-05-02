@@ -1058,55 +1058,64 @@ const css = `
 
 // ── MOOD CHART ───────────────────────────────────────────────────────────────
 function MoodChart({ entries }) {
-  const scored = entries
-    .filter(e => MOOD_SCORE[e.mood])
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const toPoints = (source) => {
+    const byDay = {};
+    entries
+      .filter(e => MOOD_SCORE[e.mood] && e.moodSource === source)
+      .forEach(e => {
+        if (!byDay[e.date]) byDay[e.date] = [];
+        byDay[e.date].push(MOOD_SCORE[e.mood]);
+      });
+    return Object.entries(byDay)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, scores]) => ({ date, score: scores.reduce((a, b) => a + b, 0) / scores.length }));
+  };
 
-  // Average scores per day
-  const byDay = {};
-  scored.forEach(e => {
-    if (!byDay[e.date]) byDay[e.date] = [];
-    byDay[e.date].push(MOOD_SCORE[e.mood]);
-  });
-  const points = Object.entries(byDay)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, scores]) => ({ date, score: scores.reduce((a, b) => a + b, 0) / scores.length }));
+  const manual = toPoints("manual");
+  const ai = toPoints("ai");
 
-  if (points.length < 2) return (
+  if (manual.length < 1 && ai.length < 2) return (
     <div style={{textAlign:"center",padding:"20px 0",color:"var(--ink-3)",fontSize:13}}>
-      Log a few entries with a mood to see your trend
+      Select your mood when logging to start tracking your trend
     </div>
   );
 
-  const W = 320, H = 100, PAD = 16;
+  const W = 320, H = 110, PAD = 16;
   const scoreColor = s => s >= 4.5 ? "#4CAF50" : s >= 3.5 ? "#8BC34A" : s >= 2.5 ? "#FFC107" : s >= 1.5 ? "#FF7043" : "#F44336";
-  const xs = points.map((_, i) => PAD + (i / (points.length - 1)) * (W - PAD * 2));
-  const ys = points.map(p => PAD + ((5 - p.score) / 4) * (H - PAD * 2));
-  const path = points.map((_, i) => `${i === 0 ? "M" : "L"}${xs[i]},${ys[i]}`).join(" ");
-  const avg = points.reduce((s, p) => s + p.score, 0) / points.length;
-  const latest = points[points.length - 1];
+
+  // Build a unified x-axis from all dates
+  const allDates = [...new Set([...manual, ...ai].map(p => p.date))].sort();
+  const xFor = date => allDates.length < 2 ? W / 2 : PAD + (allDates.indexOf(date) / (allDates.length - 1)) * (W - PAD * 2);
+  const yFor = score => PAD + ((5 - score) / 4) * (H - PAD * 2);
+  const pathFor = pts => pts.length < 2 ? "" : pts.map((p, i) => `${i === 0 ? "M" : "L"}${xFor(p.date)},${yFor(p.score)}`).join(" ");
 
   return (
     <div style={{background:"var(--card)",borderRadius:12,padding:"12px 16px",marginBottom:16,border:"1px solid var(--border)"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <span style={{fontSize:12,color:"var(--ink-2)"}}>Mood Trend</span>
-        <div style={{display:"flex",gap:12,fontSize:12}}>
-          <span style={{color:"var(--ink-3)"}}>Avg <span style={{color:scoreColor(avg),fontWeight:600}}>{avg.toFixed(1)}</span></span>
-          <span style={{color:"var(--ink-3)"}}>Latest <span style={{color:scoreColor(latest.score),fontWeight:600}}>{MOODS.find(m=>m.score===Math.round(latest.score))?.icon} {latest.score.toFixed(1)}</span></span>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <span style={{fontSize:12,fontWeight:600,color:"var(--ink-2)"}}>Mood Trend</span>
+        <div style={{display:"flex",gap:12,fontSize:11,color:"var(--ink-3)"}}>
+          <span style={{display:"flex",alignItems:"center",gap:4}}>
+            <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#E07A5F" strokeWidth="2"/><circle cx="8" cy="4" r="3" fill="#E07A5F"/></svg> You
+          </span>
+          <span style={{display:"flex",alignItems:"center",gap:4}}>
+            <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#94A3B8" strokeWidth="1.5" strokeDasharray="3,2"/><rect x="5" y="1" width="6" height="6" fill="#94A3B8"/></svg> AI
+          </span>
         </div>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:80}}>
-        {[1,2,3,4,5].map(s => {
-          const y = PAD + ((5 - s) / 4) * (H - PAD * 2);
-          return <line key={s} x1={PAD} x2={W - PAD} y1={y} y2={y} stroke="var(--border)" strokeWidth={0.5} />;
-        })}
-        <path d={path} fill="none" stroke="var(--terra)" strokeWidth={1.5} strokeLinejoin="round" />
-        {points.map((p, i) => (
-          <circle key={i} cx={xs[i]} cy={ys[i]} r={3} fill={scoreColor(p.score)} />
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:90}}>
+        {[1,2,3,4,5].map(s => (
+          <line key={s} x1={PAD} x2={W-PAD} y1={yFor(s)} y2={yFor(s)} stroke="var(--border)" strokeWidth={0.5}/>
         ))}
+        {["1","2","3","4","5"].map((s,i) => (
+          <text key={s} x={PAD-4} y={yFor(i+1)+3} fontSize="7" fill="var(--ink-3)" textAnchor="end">{s}</text>
+        ))}
+        {ai.length >= 2 && <path d={pathFor(ai)} fill="none" stroke="#94A3B8" strokeWidth={1.5} strokeDasharray="4,3" strokeLinejoin="round"/>}
+        {ai.map((p, i) => <rect key={i} x={xFor(p.date)-3} y={yFor(p.score)-3} width={6} height={6} fill={scoreColor(p.score)} opacity={0.7}/>)}
+        {manual.length >= 2 && <path d={pathFor(manual)} fill="none" stroke="#E07A5F" strokeWidth={2} strokeLinejoin="round"/>}
+        {manual.map((p, i) => <circle key={i} cx={xFor(p.date)} cy={yFor(p.score)} r={4} fill={scoreColor(p.score)} stroke="#fff" strokeWidth={1}/>)}
       </svg>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"var(--ink-3)",marginTop:2}}>
-        <span>{points[0].date}</span><span>{points[points.length-1].date}</span>
+        <span>{allDates[0]}</span><span>{allDates[allDates.length-1]}</span>
       </div>
     </div>
   );
@@ -1301,6 +1310,7 @@ export default function Life360() {
       intent,
       category: detectedCat,
       mood: selectedMood || detectedMood,
+      moodSource: selectedMood ? "manual" : detectedMood ? "ai" : null,
       linkedEvents,
       photos,
       createdAt: new Date().toISOString(),
@@ -1388,7 +1398,7 @@ export default function Life360() {
   });
 
   // ── STATS ──
-  const totalEntries = journal.entries.length;
+  const totalEntries = journal.entries.filter(e => e.text?.trim()).length;
   const milestones = journal.entries.filter(e => e.intent === "milestone").length;
   const catCounts = {};
   journal.entries.forEach(e => { if (e.category) catCounts[e.category] = (catCounts[e.category] || 0) + 1; });
