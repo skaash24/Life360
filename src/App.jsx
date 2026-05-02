@@ -1570,7 +1570,7 @@ export default function Life360() {
       {tab === "reflect" && (
         <div className="section">
           {/* Stats */}
-          <div className="stats-grid">
+          <div className="stats-grid" style={{marginBottom:8}}>
             <div className="stat-box">
               <div className="stat-num">{totalEntries}</div>
               <div className="stat-label">Total Entries</div>
@@ -1580,14 +1580,24 @@ export default function Life360() {
               <div className="stat-label">Milestones</div>
             </div>
             <div className="stat-box">
-              <div className="stat-num">{topCat ? catIcon(topCat[0]) : "—"}</div>
-              <div className="stat-label">{topCat ? `Most: ${CATEGORIES.find(c=>c.id===topCat[0])?.label}` : "No data yet"}</div>
-            </div>
-            <div className="stat-box">
               <div className="stat-num">{journal.entries.filter(e=>e.date===getToday()).length}</div>
               <div className="stat-label">Today's Entries</div>
             </div>
           </div>
+          {totalEntries > 0 && (
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+              {CATEGORIES.map(c => {
+                const count = catCounts[c.id] || 0;
+                return count > 0 ? (
+                  <div key={c.id} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 12px",borderRadius:20,background:"var(--card)",border:"1px solid var(--border)",fontSize:13}}>
+                    <span>{c.icon}</span>
+                    <span style={{color:"var(--ink-1)"}}>{c.label}</span>
+                    <span style={{color:"var(--terra)",fontWeight:600}}>{count}</span>
+                  </div>
+                ) : null;
+              })}
+            </div>
+          )}
 
           <div style={{position:"relative",marginBottom:8}}>
             <textarea
