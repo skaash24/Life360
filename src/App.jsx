@@ -1271,20 +1271,35 @@ export default function Life360() {
     setReflecting(true);
     setReflection(null);
 
-    const journalSection = journal.entries.length > 0
-      ? `JOURNAL ENTRIES:\n${journal.entries.map(e => `[${e.date}]${e.intent ? ` (${e.intent})` : ""}${e.category ? ` [${e.category}]` : ""} ${e.text}`).join("\n\n")}`
-      : "JOURNAL ENTRIES: None yet.";
+    const savedReflections = journal.reflections || [];
+    const useSummaryOfSummaries = savedReflections.length >= 3;
 
-    const calendarLines = [];
-    for (const [dateStr, evts] of Object.entries(calendarData)) {
-      evts.forEach(ev => calendarLines.push(`[${dateStr}] ${ev.summary}${ev.allDay ? " (all day)" : ""}`));
+    let contextSection;
+    if (useSummaryOfSummaries) {
+      const reflectionsList = savedReflections
+        .slice(0, 20)
+        .map(r => `[${r.generatedAt ? r.generatedAt.slice(0, 10) : "?"}]${r.dateRange ? ` (${r.dateRange})` : ""} Prompt: "${r.prompt}"\n${r.text}`)
+        .join("\n\n---\n\n");
+      const recentEntries = journal.entries.slice(0, 10)
+        .map(e => `[${e.date}]${e.category ? ` [${e.category}]` : ""} ${e.text}`)
+        .join("\n\n");
+      contextSection = `PAST REFLECTIONS (use these as primary source for longer periods):\n${reflectionsList}\n\nRECENT JOURNAL ENTRIES (use for recent/specific moments):\n${recentEntries}`;
+    } else {
+      const journalSection = journal.entries.length > 0
+        ? `JOURNAL ENTRIES:\n${journal.entries.map(e => `[${e.date}]${e.intent ? ` (${e.intent})` : ""}${e.category ? ` [${e.category}]` : ""} ${e.text}`).join("\n\n")}`
+        : "JOURNAL ENTRIES: None yet.";
+      const calendarLines = [];
+      for (const [dateStr, evts] of Object.entries(calendarData)) {
+        evts.forEach(ev => calendarLines.push(`[${dateStr}] ${ev.summary}${ev.allDay ? " (all day)" : ""}`));
+      }
+      const calendarSection = calendarLines.length > 0
+        ? `CALENDAR EVENTS:\n${calendarLines.sort().join("\n")}`
+        : "CALENDAR EVENTS: None.";
+      contextSection = `${journalSection}\n\n${calendarSection}`;
     }
-    const calendarSection = calendarLines.length > 0
-      ? `CALENDAR EVENTS:\n${calendarLines.sort().join("\n")}`
-      : "CALENDAR EVENTS: None.";
 
     const text2 = await callClaude(
-      [{ role: "user", content: `Today's date is ${getToday()}.\n\n${journalSection}\n\n${calendarSection}\n\nKevin's request: "${prompt}"\n\nRespond conversationally and warmly, using the journal entries and calendar events above as context. If Kevin asks about a specific period, focus on that. If he asks about a person or theme, find relevant moments across all entries.` }],
+      [{ role: "user", content: `Today's date is ${getToday()}.\n\n${contextSection}\n\nKevin's request: "${prompt}"\n\nRespond conversationally and warmly. For longer periods, synthesize themes and highlights. For recent or specific requests, use the detailed entries.` }],
       "You are a warm, thoughtful journaling companion for Kevin (48, works at AWS, married to Sharon, kids Aiden age 7 and a daughter). You know his life well through his journal and calendar. Be personal, insightful, and encouraging."
     );
     setReflection(text2);
