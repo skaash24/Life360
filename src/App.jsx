@@ -77,10 +77,10 @@ async function callClaude(messages, systemPrompt = "") {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1000, system: systemPrompt, messages }),
     });
-    if (!res.ok) return "";
     const data = await res.json();
+    if (!res.ok) return `Error: ${data.error || res.status}`;
     return data.content?.find(b => b.type === "text")?.text || "";
-  } catch { return ""; }
+  } catch (e) { return `Error: ${e.message}`; }
 }
 
 const CALENDAR = {
@@ -1535,8 +1535,8 @@ export default function Life360() {
           </button>
 
           {reflection && (
-            <div className="reflect-card" style={{marginTop:16}}>
-              <div className="reflect-title">Your {reflectPeriod.charAt(0).toUpperCase()+reflectPeriod.slice(1)} in Review</div>
+            <div className="reflect-card" style={{marginTop:16, background: reflection.startsWith("Error:") ? "#fff0f0" : undefined}}>
+              <div className="reflect-title">{reflection.startsWith("Error:") ? "⚠️ Something went wrong" : `Your ${reflectPeriod.charAt(0).toUpperCase()+reflectPeriod.slice(1)} in Review`}</div>
               <div className="reflect-body">{reflection}</div>
             </div>
           )}
