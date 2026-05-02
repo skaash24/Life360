@@ -1530,7 +1530,7 @@ export default function Life360() {
               value={reflectPrompt}
               onChange={e=>setReflectPrompt(e.target.value)}
               onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();generateReflection(reflectPrompt);} }}
-              placeholder="Ask anything… "How was this week?" or "Reflect on April""
+              placeholder={"Ask anything… \"How was this week?\" or \"Reflect on April\""}
               rows={3}
               style={{flex:1,resize:"vertical",padding:"10px 12px",border:"1px solid var(--border)",borderRadius:10,fontSize:14,fontFamily:"inherit",background:"var(--card)",color:"var(--ink-1)"}}
             />
