@@ -1108,19 +1108,26 @@ export default function Life360() {
       tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.readonly",
-        callback: (resp) => {
+        callback: async (resp) => {
           if (resp.error) return;
           storeToken(resp.access_token, resp.expires_in);
           setAuthed(true);
+          const [j, liveCalendar] = await Promise.all([loadJournal(), loadCalendarLive()]);
+          setJournal(j);
+          if (liveCalendar) setCalendarData(liveCalendar);
         },
       });
+      // Silent refresh on init if previously signed in but token expired
+      if (localStorage.getItem("gtoken") && !getToken()) {
+        tokenClientRef.current.requestAccessToken({ prompt: "" });
+      }
     };
     if (window.google) init();
     else window.addEventListener("load", init);
     return () => window.removeEventListener("load", init);
   }, []);
 
-  const signIn = () => tokenClientRef.current?.requestAccessToken();
+  const signIn = () => tokenClientRef.current?.requestAccessToken({ prompt: "consent" });
   const signOut = () => { clearToken(); setAuthed(false); };
 
   // Log state
@@ -1167,7 +1174,18 @@ export default function Life360() {
     const style = document.createElement("style");
     style.textContent = css;
     document.head.appendChild(style);
-    const onVisible = () => { if (document.visibilityState === "visible") setLogDate(getToday()); };
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      setLogDate(getToday());
+      if (!getToken() && localStorage.getItem("gtoken") && tokenClientRef.current) {
+        tokenClientRef.current.requestAccessToken({ prompt: "" });
+      } else if (getToken()) {
+        Promise.all([loadJournal(), loadCalendarLive()]).then(([j, liveCalendar]) => {
+          setJournal(j);
+          if (liveCalendar) setCalendarData(liveCalendar);
+        });
+      }
+    };
     document.addEventListener("visibilitychange", onVisible);
     return () => { document.head.removeChild(style); document.removeEventListener("visibilitychange", onVisible); };
   }, []);
