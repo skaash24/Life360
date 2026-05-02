@@ -1137,6 +1137,7 @@ export default function Life360() {
   const [linkedEvents, setLinkedEvents] = useState([]);
   const [detectedCat, setDetectedCat] = useState(null);
   const [detectedMood, setDetectedMood] = useState(null);
+  const [selectedMood, setSelectedMood] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [aiRunning, setAiRunning] = useState(false);
@@ -1245,7 +1246,7 @@ export default function Life360() {
       text,
       intent,
       category: detectedCat,
-      mood: detectedMood,
+      mood: selectedMood || detectedMood,
       linkedEvents,
       photos,
       createdAt: new Date().toISOString(),
@@ -1255,7 +1256,7 @@ export default function Life360() {
     await saveJournal(updated);
     setSaving(false);
     setStatus({ type: "ok", msg: "✓ Saved to your journal" });
-    setText(""); setIntent(null); setLinkedEvents([]); setDetectedCat(null); setDetectedMood(null); setPhotos([]);
+    setText(""); setIntent(null); setLinkedEvents([]); setDetectedCat(null); setDetectedMood(null); setSelectedMood(null); setPhotos([]);
     setTimeout(() => setStatus(null), 3000);
   };
 
@@ -1338,6 +1339,8 @@ export default function Life360() {
   const catCounts = {};
   journal.entries.forEach(e => { if (e.category) catCounts[e.category] = (catCounts[e.category] || 0) + 1; });
   const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0];
+  const moodCounts = {};
+  journal.entries.forEach(e => { if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1; });
 
   if (!authed) return (
     <div id="app">
@@ -1439,6 +1442,19 @@ export default function Life360() {
             value={text}
             onChange={e => setText(e.target.value)}
           />
+
+          {/* Mood picker */}
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:11,color:"var(--ink-3)",marginBottom:6}}>How are you feeling?</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {MOODS.map(m => (
+                <button key={m.id} onClick={() => setSelectedMood(selectedMood === m.id ? null : m.id)}
+                  style={{padding:"5px 10px",borderRadius:20,border:`1px solid ${selectedMood===m.id?"var(--terra)":"var(--border)"}`,background:selectedMood===m.id?"#FFF0EC":"var(--card)",color:"var(--ink-1)",fontSize:12,cursor:"pointer"}}>
+                  {m.icon} {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* AI tags */}
           {(detectedCat || detectedMood || aiRunning) && (
@@ -1585,18 +1601,34 @@ export default function Life360() {
             </div>
           </div>
           {totalEntries > 0 && (
-            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
-              {CATEGORIES.map(c => {
-                const count = catCounts[c.id] || 0;
-                return count > 0 ? (
-                  <div key={c.id} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 12px",borderRadius:20,background:"var(--card)",border:"1px solid var(--border)",fontSize:13}}>
-                    <span>{c.icon}</span>
-                    <span style={{color:"var(--ink-1)"}}>{c.label}</span>
-                    <span style={{color:"var(--terra)",fontWeight:600}}>{count}</span>
-                  </div>
-                ) : null;
-              })}
-            </div>
+            <>
+              <div className="section-header" style={{marginTop:4}}>By Category</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+                {CATEGORIES.map(c => {
+                  const count = catCounts[c.id] || 0;
+                  return count > 0 ? (
+                    <div key={c.id} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 12px",borderRadius:20,background:"var(--card)",border:"1px solid var(--border)",fontSize:13}}>
+                      <span>{c.icon}</span>
+                      <span style={{color:"var(--ink-1)"}}>{c.label}</span>
+                      <span style={{color:"var(--terra)",fontWeight:600}}>{count}</span>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+              <div className="section-header">By Mood</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+                {MOODS.map(m => {
+                  const count = moodCounts[m.id] || 0;
+                  return count > 0 ? (
+                    <div key={m.id} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 12px",borderRadius:20,background:"var(--card)",border:"1px solid var(--border)",fontSize:13}}>
+                      <span>{m.icon}</span>
+                      <span style={{color:"var(--ink-1)"}}>{m.label}</span>
+                      <span style={{color:"var(--terra)",fontWeight:600}}>{count}</span>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            </>
           )}
 
           <div style={{position:"relative",marginBottom:8}}>
