@@ -1162,6 +1162,7 @@ export default function Life360() {
   const [reflectPrompt, setReflectPrompt] = useState("");
   const [reflection, setReflection] = useState(null);
   const [reflecting, setReflecting] = useState(false);
+  const [expandedRefl, setExpandedRefl] = useState({});
 
   // Load journal and calendar on mount
   useEffect(() => {
@@ -1288,10 +1289,14 @@ export default function Life360() {
     );
     setReflection(text2);
     if (text2 && !text2.startsWith("Error:")) {
+      const dates = journal.entries.map(e => e.date).sort();
+      const fmt2 = d => new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const dateRange = dates.length > 0 ? `${fmt2(dates[0])} – ${fmt2(getToday())}` : null;
       const saved = {
         id: uid(),
         prompt,
         generatedAt: new Date().toISOString(),
+        dateRange,
         text: text2,
       };
       const updated = { ...journal, reflections: [saved, ...(journal.reflections || [])] };
@@ -1605,11 +1610,20 @@ export default function Life360() {
             <div style={{marginTop:32}}>
               <div className="section-header">Past Reflections</div>
               {journal.reflections.map(r => (
-                <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 4px",borderBottom:"1px solid var(--border)"}}>
-                  <span style={{fontSize:14,color:"var(--ink-1)"}}>✨ {r.prompt || "Reflection"}</span>
-                  <span style={{fontSize:12,color:"var(--ink-3)",whiteSpace:"nowrap",marginLeft:12}}>
-                    {r.generatedAt ? new Date(r.generatedAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : ""}
-                  </span>
+                <div key={r.id}>
+                  <div onClick={()=>setExpandedRefl(p=>({...p,[r.id]:!p[r.id]}))}
+                    style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 4px",borderBottom:"1px solid var(--border)",cursor:"pointer"}}>
+                    <div>
+                      <span style={{fontSize:14,color:"var(--terra)"}}>✨ {r.prompt || "Reflection"}</span>
+                      {r.dateRange && <span style={{fontSize:11,color:"var(--ink-3)",marginLeft:8}}>{r.dateRange}</span>}
+                    </div>
+                    <span style={{fontSize:12,color:"var(--ink-3)",whiteSpace:"nowrap",marginLeft:12}}>
+                      {r.generatedAt ? new Date(r.generatedAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : ""}
+                    </span>
+                  </div>
+                  {expandedRefl[r.id] && (
+                    <div className="reflect-body" style={{padding:"12px 4px",borderBottom:"1px solid var(--border)"}}>{r.text}</div>
+                  )}
                 </div>
               ))}
             </div>
