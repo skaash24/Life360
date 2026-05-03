@@ -1688,21 +1688,6 @@ export default function Life360() {
       {tab === "reflect" && (
         <div className="section">
           <MoodChart entries={journal.entries} />
-          {/* Stats */}
-          <div className="stats-grid" style={{marginBottom:8}}>
-            <div className="stat-box">
-              <div className="stat-num">{totalEntries}</div>
-              <div className="stat-label">Total Entries</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-num">{milestones}</div>
-              <div className="stat-label">Milestones</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-num">{journal.entries.filter(e=>e.date===getToday()).length}</div>
-              <div className="stat-label">Today's Entries</div>
-            </div>
-          </div>
           {totalEntries > 0 && (
             <>
               <div className="section-header" style={{marginTop:4}}>By Category</div>
