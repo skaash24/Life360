@@ -1221,6 +1221,7 @@ export default function Life360() {
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState({});
   const [editingTags, setEditingTags] = useState(null);
+  const [editTextVal, setEditTextVal] = useState("");
 
   // Reflect state
   const [reflectPrompt, setReflectPrompt] = useState("");
@@ -1326,6 +1327,13 @@ export default function Life360() {
 
   const updateEntryTags = async (entryId, updates) => {
     const updated = { ...journal, entries: journal.entries.map(e => e.id === entryId ? { ...e, ...updates } : e) };
+    setJournal(updated);
+    await saveJournal(updated);
+    setEditingTags(null);
+  };
+
+  const updateEntryText = async (entryId, text) => {
+    const updated = { ...journal, entries: journal.entries.map(e => e.id === entryId ? { ...e, text } : e) };
     setJournal(updated);
     await saveJournal(updated);
     setEditingTags(null);
@@ -1606,13 +1614,24 @@ export default function Life360() {
                 </div>
               )}
               <button
-                onClick={() => setEditingTags(editingTags === entry.id ? null : entry.id)}
+                onClick={() => { setEditingTags(editingTags === entry.id ? null : entry.id); setEditTextVal(entry.text || ""); }}
                 style={{marginTop:10,background:"none",border:"1px solid var(--border)",borderRadius:8,padding:"4px 10px",fontSize:12,color:"var(--ink-2)",cursor:"pointer"}}
               >
-                ✏️ Edit tags
+                ✏️ Edit
               </button>
               {editingTags === entry.id && (
                 <div style={{marginTop:10,padding:12,background:"var(--card)",borderRadius:10,border:"1px solid var(--border)"}}>
+                  <div style={{fontSize:12,color:"var(--ink-2)",marginBottom:6}}>Text</div>
+                  <textarea
+                    value={editTextVal}
+                    onChange={e => setEditTextVal(e.target.value)}
+                    rows={4}
+                    style={{width:"100%",boxSizing:"border-box",padding:"8px 10px",borderRadius:8,border:"1px solid var(--border)",fontSize:14,fontFamily:"inherit",resize:"vertical",background:"var(--surface)",color:"var(--ink-1)"}}
+                  />
+                  <button
+                    onClick={() => updateEntryText(entry.id, editTextVal)}
+                    style={{marginTop:6,marginBottom:14,padding:"6px 16px",borderRadius:8,background:"var(--terra)",border:"none",color:"#fff",fontSize:13,cursor:"pointer"}}
+                  >Save text</button>
                   <div style={{fontSize:12,color:"var(--ink-2)",marginBottom:6}}>Category</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
                     {CATEGORIES.map(c => (
