@@ -1219,6 +1219,7 @@ export default function Life360() {
 
   // Timeline state
   const [filter, setFilter] = useState("all");
+  const [timelinePage, setTimelinePage] = useState(0);
   const [expanded, setExpanded] = useState({});
   const [editingTags, setEditingTags] = useState(null);
   const [editTextVal, setEditTextVal] = useState("");
@@ -1575,7 +1576,7 @@ export default function Life360() {
               {id:"stories",label:"📖 Stories"},
               ...CATEGORIES.map(c=>({id:c.id,label:`${c.icon} ${c.label}`}))
             ].map(f => (
-              <button key={f.id} className={`filter-btn${filter===f.id?" active":""}`} onClick={()=>setFilter(f.id)}>
+              <button key={f.id} className={`filter-btn${filter===f.id?" active":""}`} onClick={()=>{setFilter(f.id);setTimelinePage(0);}}>
                 {f.label}
               </button>
             ))}
@@ -1587,7 +1588,7 @@ export default function Life360() {
               <div className="empty-msg">Nothing here yet</div>
               <div className="empty-sub">Start logging moments in the Log tab</div>
             </div>
-          ) : filteredEntries.map(entry => (
+          ) : filteredEntries.slice(timelinePage * 10, timelinePage * 10 + 10).map(entry => (
             <div key={entry.id} className="entry-card">
               <div className="entry-meta">
                 <span className="entry-date">{fmt(entry.date)}</span>
@@ -1663,6 +1664,23 @@ export default function Life360() {
               )}
             </div>
           ))}
+          {filteredEntries.length > 10 && (
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,padding:"12px 0"}}>
+              <button
+                onClick={() => setTimelinePage(p => Math.max(0, p - 1))}
+                disabled={timelinePage === 0}
+                style={{padding:"6px 16px",borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",color:timelinePage===0?"var(--ink-3)":"var(--ink-1)",fontSize:13,cursor:timelinePage===0?"default":"pointer"}}
+              >← Newer</button>
+              <span style={{fontSize:12,color:"var(--ink-2)"}}>
+                {timelinePage * 10 + 1}–{Math.min(timelinePage * 10 + 10, filteredEntries.length)} of {filteredEntries.length}
+              </span>
+              <button
+                onClick={() => setTimelinePage(p => p + 1)}
+                disabled={(timelinePage + 1) * 10 >= filteredEntries.length}
+                style={{padding:"6px 16px",borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",color:(timelinePage+1)*10>=filteredEntries.length?"var(--ink-3)":"var(--ink-1)",fontSize:13,cursor:(timelinePage+1)*10>=filteredEntries.length?"default":"pointer"}}
+              >Older →</button>
+            </div>
+          )}
         </div>
       )}
 
